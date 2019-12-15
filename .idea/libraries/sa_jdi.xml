@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="sa-jdi">
+    <CLASSES>
+      <root url="jar://C:/Program Files/Java/jdk-13/lib/sa-jdi.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

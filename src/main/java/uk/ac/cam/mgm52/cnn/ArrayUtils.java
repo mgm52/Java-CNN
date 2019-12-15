@@ -1,3 +1,5 @@
+package uk.ac.cam.mgm52.cnn;
+
 public final class ArrayUtils {
 
     private ArrayUtils(){}
