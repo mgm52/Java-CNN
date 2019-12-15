@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"uk.ac.cam.mgm52.cnn","l":"ArrayUtils"},{"p":"uk.ac.cam.mgm52.cnn","l":"HornerConversion"},{"p":"uk.ac.cam.mgm52.cnn","l":"Main"},{"p":"uk.ac.cam.mgm52.cnn","l":"StubTensor"},{"p":"uk.ac.cam.mgm52.cnn","l":"Tensor"},{"p":"uk.ac.cam.mgm52.cnn","l":"TensorTests"}]
