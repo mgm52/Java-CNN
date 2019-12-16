@@ -1,4 +1,4 @@
-# Java-CNN-from-scratch
+# Java-CNN
 A convolutional neural network written in Java.
 
 ---
