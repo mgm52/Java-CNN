@@ -1,5 +1,5 @@
 # Java-CNN
-A convolutional neural network written in Java.
+A Java-based convolutional neural network.
 
 ---
 
