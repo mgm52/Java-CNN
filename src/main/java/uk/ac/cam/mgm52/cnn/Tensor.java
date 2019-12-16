@@ -3,6 +3,7 @@ package uk.ac.cam.mgm52.cnn;
 import java.util.Arrays;
 import java.util.Iterator;
 
+/**Stores an N-dimensional tensor. Facilitates operations including cross-correlation mapping and extracting subsets.*/
 public class Tensor {
     //Length of each dimension
     private int[] dimSizes;
@@ -14,7 +15,7 @@ public class Tensor {
      * @param dimSizes the size (length) of each diminsion within the tensor
      */
     public Tensor(int... dimSizes){
-        //Copying values would introduce unnecessary overhead, so array is assigned as a reference
+        //Although it would better enforce immutability, copying values would introduce unnecessary overhead, so array is assigned as a reference.
         this.dimSizes = dimSizes;
 
         //The length of our 1-dimensional values array needs to be equivalent to the product of all dimensions
@@ -26,7 +27,7 @@ public class Tensor {
      * @param values all values to be used by the tensor, given using horner's scheme
      */
     public Tensor(int[] dimSizes, double[] values){
-        //Copying values would introduce unnecessary overhead, so arrays are assigned as references
+        //Although it would better enforce immutability, copying values would introduce unnecessary overhead, so arrays are assigned as references.
         this.dimSizes = dimSizes;
         this.values = values;
     }
