@@ -12,7 +12,7 @@ public class Tensor {
     private double[] values;
 
     /**Creates new tensor with given dimensions. Default values are zero.
-     * @param dimSizes the size (length) of each diminsion within the tensor
+     * @param dimSizes the size (length) of each dimension within the tensor
      */
     public Tensor(int... dimSizes){
         //Although it would better enforce immutability, copying values would introduce unnecessary overhead, so array is assigned as a reference.
@@ -50,6 +50,8 @@ public class Tensor {
             String valString = values[i]+"";
 
             //Format number to reduce length
+            //(Note: += here performs poorly as it creates a new object each time it is called)
+            //(Could remedy this with StringBuilder, but performance < readability in this function)
             result += valString.substring(0, Math.max(5, valString.indexOf(".")+2)) + " ";
 
             //If statement here is to prevent new lines being added to end of result
@@ -67,8 +69,7 @@ public class Tensor {
 
     /**Return new tensor with same dimensions, but values at zero.*/
     public Tensor zeroes(){
-        Tensor t = new Tensor(dimSizes);
-        return t;
+        return new Tensor(dimSizes);
     }
 
     /**Return new tensor with same dimensions, but values randomized within range.
@@ -176,6 +177,7 @@ public class Tensor {
     }
 
     /**Iterates through a set of coordinates within a region.*/
+    //TODO: Compare this with an implementation that iterates through horner indices instead of coordinates
     class TensorCoordIterator implements Iterator<int[]> {
         int[] startCoords;
         int[] finalCoords;
@@ -207,13 +209,12 @@ public class Tensor {
 
         @Override
         public boolean hasNext() {
-            return currentIndex+1 < finalIndex;
+            return currentIndex + 1 < finalIndex;
         }
 
         @Override
         public int[] next() {
             //This works like a simple counter. It increments the leftmost non-maximal number, setting any maximal numbers back to zero.
-            //Note: using this instead of hornerToCoords for the sake of efficiency.
             for(int i = 0; i < currentCoords.length; i++){
                 currentCoords[i] = currentCoords[i];
 
