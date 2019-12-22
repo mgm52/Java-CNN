@@ -1,7 +1,9 @@
 package uk.ac.cam.mgm52.cnn;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.stream.DoubleStream;
 
 /**Stores an N-dimensional tensor. Facilitates operations including cross-correlation mapping and extracting subsets.*/
 public class Tensor {
@@ -11,12 +13,16 @@ public class Tensor {
     //Values of all elements. Stored in Horner's scheme.
     private double[] values;
 
+    //Number of dimensions.
+    public final int rank;
+
     /**Creates new tensor with given dimensions. Default values are zero.
      * @param dimSizes the size (length) of each dimension within the tensor
      */
     public Tensor(int... dimSizes){
         //Although it would better enforce immutability, copying values would introduce unnecessary overhead, so array is assigned as a reference.
         this.dimSizes = dimSizes;
+        rank = dimSizes.length;
 
         //The length of our 1-dimensional values array needs to be equivalent to the product of all dimensions
         this.values = new double[Arrays.stream(dimSizes).reduce(1, (i, j) -> i * j)];
@@ -29,12 +35,21 @@ public class Tensor {
     public Tensor(int[] dimSizes, double[] values){
         //Although it would better enforce immutability, copying values would introduce unnecessary overhead, so arrays are assigned as references.
         this.dimSizes = dimSizes;
+        rank = dimSizes.length;
         this.values = values;
     }
 
     /**Return copy of Tensor values array. This should not be used at all frequently: copying all values is costly.*/
     public double[] getValuesCopy(){
         return Arrays.copyOf(values, values.length);
+    }
+
+    /**Returns a subset of the dimensions of the tensor, starting from dim 0
+     * @param length The number of dimensions to return
+     * @return
+     */
+    public int[] getFirstDimsCopy(int length){
+        return Arrays.copyOf(dimSizes, length);
     }
 
     /**
@@ -52,7 +67,8 @@ public class Tensor {
             //Format number to reduce length
             //(Note: += here performs poorly as it creates a new object each time it is called)
             //(Could remedy this with StringBuilder, but performance < readability in this function)
-            result += valString.substring(0, Math.max(5, valString.indexOf(".")+2)) + " ";
+            if(valString.length() >= 5) valString = valString.substring(0, Math.max(5, valString.indexOf(".")+2));
+            result += valString + " ";;
 
             //If statement here is to prevent new lines being added to end of result
             if (i < values.length-1) {
@@ -76,7 +92,7 @@ public class Tensor {
      * @param min min value of each item
      * @param max max value of each item
      */
-    public Tensor randoms(float min, float max){
+    public Tensor randoms(double min, double max){
         Tensor t = new Tensor(dimSizes);
 
         //Set all values to random within range [min, max)
@@ -107,15 +123,23 @@ public class Tensor {
         Tensor region = new Tensor(newDimSizes);
 
         //Use iterator to assign each value
-        for (TensorCoordIterator i = new TensorCoordIterator(corner1, corner2); i.hasNext(); ) {
+        for (CoordUtils.CoordIterator i = new CoordUtils.CoordIterator(corner1, corner2); i.hasNext(); ) {
             int[] coords = i.next();
             //Iterator's currentIndex value corresponds to index within region
-            region.values[i.currentIndex] = get(coords);
+            region.values[i.getCurrentCount()-1] = get(coords);
         }
 
         return region;
     }
 
+    /**Elementwise addition between two tensors. Each element of t is multiplied by "factor" first.*/
+    public Tensor add(Tensor t, double factor){
+        double[] newVals = new double[values.length];
+        for(int i = 0; i < values.length; i ++){
+            newVals[i] = values[i] + t.values[i] * factor;
+        }
+        return new Tensor(dimSizes, newVals);
+    }
 
     /**Multiply each element of t1 with a corresponding element of t2, then sum these values.*/
     public double innerProduct(Tensor t){
@@ -129,26 +153,72 @@ public class Tensor {
     /**Generate cross-correlation map of a filter applied to this tensor.*/
     public Tensor crossCorrelationMap(Tensor filter){
         //The size of the resulting map = base size - (filter size - 1) in each dimension
-        Tensor ccMap = new Tensor(ArrayUtils.subtractAll(dimSizes, ArrayUtils.addAll(filter.dimSizes, -1)));
+        Tensor ccMap = new Tensor(calculateMapSize(filter.dimSizes));
 
         for (TensorRegionsIterator i = new TensorRegionsIterator(filter.dimSizes); i.hasNext(); ) {
             Tensor region = i.next();
-            ccMap.values[i.coordIterator.currentIndex] = region.innerProduct(filter);
+            ccMap.values[i.coordIterator.getCurrentCount()-1] = region.innerProduct(filter);
         }
 
         return ccMap;
     }
 
+    /**Calculate the size of the cross correlation map resultant from applying a given filter*/
+    public int[] calculateMapSize(int[] filterDimSizes){
+        return ArrayUtils.subtractAll(dimSizes, ArrayUtils.addAll(filterDimSizes, -1));
+    }
 
-    /**Iterates through all possible regions (of a certain size) that can be made from this tensor.*/
-    class TensorRegionsIterator implements Iterator<Tensor>{
+    public double maxValue(){
+        double max = values[0];
+        for(int i = 1; i < values.length; i++){
+            if (values[i] > max) max = values[i];
+        }
+
+        return max;
+    }
+
+
+    /**Appends one tensor to another. Base tensor must be of equal or one-higher rank to input tensor.
+     * e.g. (3, 3) tensor append (3, 3) tensor = (3, 3, 2) tensor
+     *      (4, 4, 3) tensor append (4, 4) tensor = (4, 4, 4) tensor
+     * @param t input tensor to be appended. of equal or one-less rank to base tensor.
+     * @return resultant tensor
+     */
+    public Tensor appendTensor(Tensor t){
+
+        int[] newDimSizes;
+        if(t.dimSizes.length < dimSizes.length){
+            //e.g. (4, 4, 3) append with (4, 4) tensor. Should result in (4, 4, 4).
+            newDimSizes = Arrays.copyOf(dimSizes, dimSizes.length);
+            newDimSizes[newDimSizes.length - 1]++;
+        }
+        else{
+            //e.g. (3, 3) append with (3, 3) tensor. Should result in (3, 3, 2).
+            newDimSizes = ArrayUtils.appendValue(dimSizes, 2);
+        }
+
+        //Add values of input tensor onto base tensor.
+        double[] newValues = DoubleStream.concat(Arrays.stream(values), Arrays.stream(t.values)).toArray();
+
+        return new Tensor(newDimSizes, newValues);
+    }
+
+
+
+    /**Iterates through all possible regions (of a certain size) that can be made from this tensor.
+     * Can be instantiated with or without strides.*/
+    class TensorRegionsIterator implements Iterator<Tensor> {
         int[] regionSizes;
-
         int[] bottomCorner;
         int[] topCorner;
-        TensorCoordIterator coordIterator;
 
-        TensorRegionsIterator(int[] regionSizes){
+        CoordUtils.CoordIterInterface coordIterator;
+
+        //Private function used by multiple similar constructors
+        private void setup(int[] regionSizes){
+            //Ensure regions are the same size by appending dimensions of length 1
+            while(regionSizes.length < dimSizes.length) regionSizes = ArrayUtils.appendValue(regionSizes, 1);
+
             //Subtracting 1 here so that we don't have to in later iterations
             this.regionSizes = ArrayUtils.addAll(regionSizes, -1);
 
@@ -157,10 +227,21 @@ public class Tensor {
 
             //Top corner is limited by size of region
             topCorner = ArrayUtils.subtractAll(dimSizes, regionSizes);
+        }
+
+        TensorRegionsIterator(int[] regionSizes){
+            setup(regionSizes);
 
             //Iterate over all coordinates that a region can be formed from
-            coordIterator = new TensorCoordIterator(bottomCorner, topCorner);
+            coordIterator = new CoordUtils.CoordIterator(bottomCorner, topCorner);
+        }
 
+        //This constructor makes use of a strides array.
+        TensorRegionsIterator(int[] regionSizes, int[] strides){
+            setup(regionSizes);
+
+            //Iterate over all coordinates that a region can be formed from
+            coordIterator = new CoordUtils.StridingCoordIterator(bottomCorner, topCorner, strides);
         }
 
         @Override
@@ -176,62 +257,6 @@ public class Tensor {
         }
     }
 
-    /**Iterates through a set of coordinates within a region.*/
-    //TODO: Compare this with an implementation that iterates through horner indices instead of coordinates
-    class TensorCoordIterator implements Iterator<int[]> {
-        int[] startCoords;
-        int[] finalCoords;
 
-        int[] currentCoords;
-
-        //Number of coordinates that have been processed so far. Used to know when to stop. Starts at -1 so that it corresponds to local index in horner scheme.
-        int currentIndex = -1;
-        //finalIndex default at 1 because this is multiplication identity
-        int finalIndex = 1;
-
-        TensorCoordIterator(int[] corner1, int[] corner2){
-            startCoords = new int[corner1.length];
-            currentCoords = new int[corner1.length];
-            finalCoords = new int[corner2.length];
-
-            //Ensure start is at minimum coords within region, end is at maximum
-            for(int i = 0; i < startCoords.length; i++){
-                startCoords[i] = Math.min(corner1[i], corner2[i]);
-                currentCoords[i] = startCoords[i];
-                finalCoords[i] = Math.max(corner1[i], corner2[i]);
-
-                //The total number of integer coordinates within the region
-                finalIndex *= (finalCoords[i] - startCoords[i]) + 1;
-            }
-            //At each iteration, we increment the coordinate before returning it. This means that our starting position has to be 1 less than the first coord.
-            currentCoords[0] --;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return currentIndex + 1 < finalIndex;
-        }
-
-        @Override
-        public int[] next() {
-            //This works like a simple counter. It increments the leftmost non-maximal number, setting any maximal numbers back to zero.
-            for(int i = 0; i < currentCoords.length; i++){
-                currentCoords[i] = currentCoords[i];
-
-                if(currentCoords[i] == finalCoords[i]){
-                    currentCoords[i] = startCoords[i];
-                }
-                else{
-                    currentCoords[i] = currentCoords[i] + 1;
-                    currentIndex++;
-                    //Exit the loop as soon as we've incremented a coord
-                    return currentCoords;
-                }
-            }
-
-            //If hasNext is working, this code should not execute.
-            throw new NullPointerException("Tried to access coordinate beyond region boundary");
-        }
-    }
 
 }

@@ -1,5 +1,7 @@
 package uk.ac.cam.mgm52.cnn;
 
+import java.util.Arrays;
+
 public final class ArrayUtils {
 
     private ArrayUtils(){}
@@ -16,6 +18,7 @@ public final class ArrayUtils {
     //Add val to all elements of arr
     public static int[] addAll(int[] arr, int val){
         int[] result = new int[arr.length];
+
         for(int i = 0; i < arr.length; i++){
             result[i] = arr[i] + val;
         }
@@ -26,6 +29,31 @@ public final class ArrayUtils {
         int[] result = new int[arr.length];
         for(int i = 0; i < arr.length; i++){
             result[i] = arr[i] - arr2[i];
+        }
+        return result;
+    }
+
+    public static int[] appendValue(int[] arr, int val){
+        int[] newArray = Arrays.copyOf(arr, arr.length+1);
+        newArray[newArray.length - 1] = val;
+
+        return newArray;
+    }
+
+    public static int[] divideAll(int[] arr, int[] arr2){
+        int[] result = new int[arr.length];
+
+        for(int i = 0; i < arr.length; i++){
+            result[i] = arr[i] / arr2[i];
+        }
+        return result;
+    }
+
+    public static int[] multAll(int[] arr, int[] arr2){
+        int[] result = new int[arr.length];
+
+        for(int i = 0; i < arr.length; i++){
+            result[i] = arr[i] * arr2[i];
         }
         return result;
     }
