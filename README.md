@@ -3,6 +3,6 @@ A Java-based convolutional neural network.
 
 ---
 
-Current status: *Tensor class largely complete.*
+Current status: *Tensor class largely complete, as are the convolutional and max pooling layers.*
 
-Todo: *Implement convolutional, fully connected, and max pooling layers. Write trainer class. Create training examples.*
+Todo: *Implement fully connected layer. Write trainer class. Create training examples.*
