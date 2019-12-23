@@ -216,8 +216,6 @@ public class Tensor {
         public int[] next() {
             //This works like a simple counter. It increments the leftmost non-maximal number, setting any maximal numbers back to zero.
             for(int i = 0; i < currentCoords.length; i++){
-                currentCoords[i] = currentCoords[i];
-
                 if(currentCoords[i] == finalCoords[i]){
                     currentCoords[i] = startCoords[i];
                 }
