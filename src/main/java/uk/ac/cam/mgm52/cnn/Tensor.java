@@ -3,15 +3,16 @@ package uk.ac.cam.mgm52.cnn;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.stream.DoubleStream;
 
 /**Stores an N-dimensional tensor. Facilitates operations including cross-correlation mapping and extracting subsets.*/
 public class Tensor {
     //Length of each dimension
-    private int[] dimSizes;
+    public int[] dimSizes;
 
     //Values of all elements. Stored in Horner's scheme.
-    private double[] values;
+    public double[] values;
 
     //Number of dimensions.
     public final int rank;
@@ -25,7 +26,7 @@ public class Tensor {
         rank = dimSizes.length;
 
         //The length of our 1-dimensional values array needs to be equivalent to the product of all dimensions
-        this.values = new double[Arrays.stream(dimSizes).reduce(1, (i, j) -> i * j)];
+        this.values = new double[ArrayUtils.product(dimSizes)];
     }
 
     /**Creates new tensor with given dimensions, values.
@@ -37,11 +38,6 @@ public class Tensor {
         this.dimSizes = dimSizes;
         rank = dimSizes.length;
         this.values = values;
-    }
-
-    /**Return copy of Tensor values array. This should not be used at all frequently: copying all values is costly.*/
-    public double[] getValuesCopy(){
-        return Arrays.copyOf(values, values.length);
     }
 
     /**Returns a subset of the dimensions of the tensor, starting from dim 0
@@ -67,11 +63,16 @@ public class Tensor {
             //Format number to reduce length
             //(Note: += here performs poorly as it creates a new object each time it is called)
             //(Could remedy this with StringBuilder, but performance < readability in this function)
-            if(valString.length() >= 5) valString = valString.substring(0, Math.max(5, valString.indexOf(".")+2));
-            result += valString + " ";;
+
+            String shortString = valString;
+            if(shortString.length() >= 5) shortString = shortString.substring(0, Math.max(5, shortString.indexOf(".")+2));
+
+            if(valString.contains("E")) shortString += valString.substring(valString.indexOf("E"));
+
+            result += shortString + " ";;
 
             //If statement here is to prevent new lines being added to end of result
-            if (i < values.length-1) {
+            if (i < values.length-1 && dimSizes.length > 1) {
                 //Enter new line once reached end of x dimension
                 if ((i + 1) % dimSizes[0] == 0) result += System.lineSeparator();
                 //Enter another new line once reached end of xy plane
@@ -82,6 +83,27 @@ public class Tensor {
         return result;
     }
 
+    public String toBoolString(){
+        String result = "";
+
+        //Iterate through each value. A TensorCoordIterator is not necessary here, as we operate in indices.
+        for(int i = 0; i < values.length; i++){
+            //Getting next value in tensor...
+            String valString = ((values[i] < 0) ? "." : "#");
+
+            result += valString + " ";;
+
+            //If statement here is to prevent new lines being added to end of result
+            if (i < values.length-1 && dimSizes.length > 1) {
+                //Enter new line once reached end of x dimension
+                if ((i + 1) % dimSizes[0] == 0) result += System.lineSeparator();
+                //Enter another new line once reached end of xy plane
+                if ((i + 1) % (dimSizes[0] * dimSizes[1]) == 0) result += System.lineSeparator();
+            }
+        }
+
+        return result;
+    }
 
     /**Return new tensor with same dimensions, but values at zero.*/
     public Tensor zeroes(){
@@ -103,10 +125,31 @@ public class Tensor {
         return t;
     }
 
+    public Tensor randomsSND(){
+        Tensor t = new Tensor(dimSizes);
 
-    /**Get a value at a coordinate*/
+        Random ran = new Random();
+
+        //Set all values to random, normally distributed values with mean 0, stan dev 1
+        for(int i = 0; i < t.values.length; i++){
+            t.values[i] = ran.nextGaussian();
+        }
+
+        return t;
+    }
+
+
+    /**Get a value at some coordinates*/
     public double get(int... coords){
-        return values[HornerConversion.coordsToHorner(coords, dimSizes)];
+        int index = HornerConversion.coordsToHorner(coords, dimSizes);
+        if(index >= 0 && index < values.length) return values[index];
+        //Return 0 if trying to access a coordinate beyond boundaries. This is useful for padding.
+        return 0;
+    }
+
+    /**Get a value at some coordinates*/
+    public void set(int[] coords, double val){
+        values[HornerConversion.coordsToHorner(coords, dimSizes)] = val;
     }
 
     /**Returns tensor with opposite corners at corner1 and corner2
@@ -141,6 +184,10 @@ public class Tensor {
         return new Tensor(dimSizes, newVals);
     }
 
+    public boolean equals(Tensor t){
+        return(Arrays.equals(t.dimSizes, dimSizes) && Arrays.equals(t.values, values));
+    }
+
     /**Multiply each element of t1 with a corresponding element of t2, then sum these values.*/
     public double innerProduct(Tensor t){
         double result = 0;
@@ -150,64 +197,71 @@ public class Tensor {
         return result;
     }
 
-    /**Generate cross-correlation map of a filter applied to this tensor.*/
-    public Tensor crossCorrelationMap(Tensor filter){
-        //The size of the resulting map = base size - (filter size - 1) in each dimension
-        Tensor ccMap = new Tensor(calculateMapSize(filter.dimSizes));
-
-        for (TensorRegionsIterator i = new TensorRegionsIterator(filter.dimSizes); i.hasNext(); ) {
-            Tensor region = i.next();
-            ccMap.values[i.coordIterator.getCurrentCount()-1] = region.innerProduct(filter);
-        }
-
-        return ccMap;
+    /**Multiply each element of t1 with a corresponding element of t2.*/
+    public Tensor product(Tensor t){
+        return new Tensor(dimSizes, ArrayUtils.multAll(values, t.values));
     }
 
-    /**Calculate the size of the cross correlation map resultant from applying a given filter*/
-    public int[] calculateMapSize(int[] filterDimSizes){
-        return ArrayUtils.subtractAll(dimSizes, ArrayUtils.addAll(filterDimSizes, -1));
+    public Tensor product(double val){
+        return new Tensor(dimSizes, ArrayUtils.multAll(values, val));
     }
+
+    public int maxValueIndex(){
+        return ArrayUtils.findIndexOfMax(values);
+    }
+
 
     public double maxValue(){
-        double max = values[0];
-        for(int i = 1; i < values.length; i++){
-            if (values[i] > max) max = values[i];
-        }
-
-        return max;
+        return ArrayUtils.findIndexOfMax(values);
     }
 
 
-    /**Appends one tensor to another. Base tensor must be of equal or one-higher rank to input tensor.
-     * e.g. (3, 3) tensor append (3, 3) tensor = (3, 3, 2) tensor
-     *      (4, 4, 3) tensor append (4, 4) tensor = (4, 4, 4) tensor
-     * @param t input tensor to be appended. of equal or one-less rank to base tensor.
+    /**Appends one tensor to another. If base tensor rank != input rank, missing dimensions are considered to have length 1.
+     * @param t input tensor to be appended.
      * @return resultant tensor
      */
-    public Tensor appendTensor(Tensor t){
+    public Tensor appendTensor(Tensor t, int resultRank){
+        int[] newDimSizes = Arrays.copyOf(dimSizes, resultRank);
 
-        int[] newDimSizes;
-        if(t.dimSizes.length < dimSizes.length){
-            //e.g. (4, 4, 3) append with (4, 4) tensor. Should result in (4, 4, 4).
-            newDimSizes = Arrays.copyOf(dimSizes, dimSizes.length);
-            newDimSizes[newDimSizes.length - 1]++;
+        //Any new dimensions added need to start at 1
+        for(int i = dimSizes.length; i < resultRank; i++){
+            newDimSizes[i] = 1;
+        }
+
+        if(t.dimSizes.length >= resultRank){
+            newDimSizes[resultRank-1] += t.dimSizes[t.dimSizes.length-1];
         }
         else{
-            //e.g. (3, 3) append with (3, 3) tensor. Should result in (3, 3, 2).
-            newDimSizes = ArrayUtils.appendValue(dimSizes, 2);
+            newDimSizes[resultRank-1] += 1;
         }
 
-        //Add values of input tensor onto base tensor.
+        //Append values of input tensor onto base tensor.
         double[] newValues = DoubleStream.concat(Arrays.stream(values), Arrays.stream(t.values)).toArray();
 
         return new Tensor(newDimSizes, newValues);
     }
 
+    //Returns a tensor flipped diagonally.
+    //Coord at dimension d -> dimsize[d] - 1 - coord[d]
+    public Tensor flip(){
+        Tensor flippedTensor = new Tensor(dimSizes);
+
+        CoordUtils.CoordIterator i = new CoordUtils.CoordIterator(new int[] {0, 0, 0}, ArrayUtils.addAll(dimSizes, -1));
+        while(i.hasNext()){
+            int[] currentCoords = i.next();
+            int[] flippedCoords = new int[currentCoords.length];
+            for(int j = 0; j < currentCoords.length; j++){
+                flippedCoords[j] = dimSizes[j] - 1 - currentCoords[j];
+            }
+            flippedTensor.set(currentCoords, get(flippedCoords));
+        }
+        return flippedTensor;
+    }
 
 
     /**Iterates through all possible regions (of a certain size) that can be made from this tensor.
      * Can be instantiated with or without strides.*/
-    class TensorRegionsIterator implements Iterator<Tensor> {
+    class RegionsIterator implements Iterator<Tensor> {
         int[] regionSizes;
         int[] bottomCorner;
         int[] topCorner;
@@ -215,30 +269,37 @@ public class Tensor {
         CoordUtils.CoordIterInterface coordIterator;
 
         //Private function used by multiple similar constructors
-        private void setup(int[] regionSizes){
+        //Note: padding array can be any number of dimensions.
+        private void setup(int[] regionSizes, int[] padding){
+            int[] regionSizesCopy = regionSizes;
+
             //Ensure regions are the same size by appending dimensions of length 1
-            while(regionSizes.length < dimSizes.length) regionSizes = ArrayUtils.appendValue(regionSizes, 1);
+            while(regionSizesCopy.length < dimSizes.length) regionSizesCopy = ArrayUtils.appendValue(regionSizesCopy, 1);
 
             //Subtracting 1 here so that we don't have to in later iterations
-            this.regionSizes = ArrayUtils.addAll(regionSizes, -1);
+            this.regionSizes = ArrayUtils.addAll(regionSizesCopy, -1);
 
-            //Bottom corner is at origin
+            //Bottom corner is at origin, then displace by padding
             bottomCorner = new int[dimSizes.length];
+            ArrayUtils.subtractAll(bottomCorner, padding);
 
             //Top corner is limited by size of region
-            topCorner = ArrayUtils.subtractAll(dimSizes, regionSizes);
+            topCorner = ArrayUtils.subtractAll(dimSizes, regionSizesCopy);
+
+            //But extended by padding
+            topCorner = ArrayUtils.addAll(topCorner, padding);
         }
 
-        TensorRegionsIterator(int[] regionSizes){
-            setup(regionSizes);
+        RegionsIterator(int[] regionSizes, int[] padding){
+            setup(regionSizes, padding);
 
             //Iterate over all coordinates that a region can be formed from
             coordIterator = new CoordUtils.CoordIterator(bottomCorner, topCorner);
         }
 
         //This constructor makes use of a strides array.
-        TensorRegionsIterator(int[] regionSizes, int[] strides){
-            setup(regionSizes);
+        RegionsIterator(int[] regionSizes, int[] padding, int[] strides){
+            setup(regionSizes, padding);
 
             //Iterate over all coordinates that a region can be formed from
             coordIterator = new CoordUtils.StridingCoordIterator(bottomCorner, topCorner, strides);
