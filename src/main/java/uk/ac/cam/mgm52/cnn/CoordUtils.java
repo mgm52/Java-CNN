@@ -13,7 +13,6 @@ public class CoordUtils {
         int getCurrentCount();
     }
 
-
     /**Iterates through a set of coordinates within a region.*/
     public static class CoordIterator implements CoordIterInterface {
         int[] startCoords;

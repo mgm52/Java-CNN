@@ -9,33 +9,46 @@ import java.util.Arrays;
 public class Main {
 
     public static void main(String[] args) throws IOException {
-        int[] labels = IdxReader.readLabels("resources/kuzushiji/train-labels-idx1-ubyte", 6000);
+        int[] labels = IdxReader.readLabels("resources/mnist/train-labels-idx1-ubyte", 60000);
         Tensor[] labelTensors = IdxReader.labelsToTensors(labels);
-        Tensor[] imageTensors = IdxReader.readGreyImages("resources/kuzushiji/train-images-idx3-ubyte", 6000);
+        Tensor[] imageTensors = IdxReader.readGreyImages("resources/mnist/train-images-idx3-ubyte", 60000);
 
         Network testNet = new Network(28, 28);
-        //testNet.addConv(3, 8).addMax(2, new int[] {2, 2}).addFull(10).addSoftmax();
+
         testNet.addConv(new int[] {3, 3}, 8)
                 .addMax(2, new int[] {2, 2})
-                .addFull(10).addSoftmax();
+                .addFull(10)
+                .addSoftmax();
+
 
 
         Trainer testTrain = new Trainer(testNet, LossFunction.crossEntropy, imageTensors, labelTensors, 100,0.005);
 
-        for(int i = 0; i < 12; i++) {
+        //Values with random weights
+        testTrain.printExamples(10);
 
+        //First epoch
+        testTrain.epoch();
+        testTrain.printExamples(10);
+
+
+        for(int i = 0; i < 12; i++) {
             testTrain.epoch();
             testTrain.learningRate *= 0.82;
-
         }
 
-        int[] tenklabels = IdxReader.readLabels("resources/kuzushiji/t10k-labels-idx1-ubyte", 10000);
-        Tensor[] tenklabelTensors = IdxReader.labelsToTensors(tenklabels);
-        Tensor[] tenkimageTensors = IdxReader.readGreyImages("resources/kuzushiji/t10k-images-idx3-ubyte", 10000);
+        //Save filters
+        ((Layer_Convolutional) testNet.layers[0]).saveFilterImages();
 
-        Trainer tenktestTrain = new Trainer(testTrain.network, LossFunction.crossEntropy, tenkimageTensors, tenklabelTensors, 10000,0.005);
+        int[] tenklabels = IdxReader.readLabels("resources/mnist/t10k-labels-idx1-ubyte", 10000);
+        Tensor[] tenklabelTensors = IdxReader.labelsToTensors(tenklabels);
+        Tensor[] tenkimageTensors = IdxReader.readGreyImages("resources/mnist/t10k-images-idx3-ubyte", 10000);
+
+        Trainer tenktestTrain = new Trainer(testTrain.network, LossFunction.crossEntropy, tenkimageTensors, tenklabelTensors, 10000,0);
 
         tenktestTrain.epoch();
+        tenktestTrain.printExamples(10);
+
     }
 
     public static void fullyconnectedtest(){

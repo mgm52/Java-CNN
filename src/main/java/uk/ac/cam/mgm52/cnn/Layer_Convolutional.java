@@ -1,5 +1,11 @@
 package uk.ac.cam.mgm52.cnn;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+
 public class Layer_Convolutional implements Layer {
 
     Tensor filters;
@@ -105,5 +111,28 @@ public class Layer_Convolutional implements Layer {
     @Override
     public int[] getOutputDims() {
         return outputDims;
+    }
+
+    public void saveFilterImages() throws IOException {
+
+        for (Tensor.RegionsIterator i = filters.new RegionsIterator(filterDimSizes, new int[0]); i.hasNext(); ) {
+            Tensor f = i.next();
+            int[] pixels = new int[f.values.length];
+
+            for(int p = 0; p < pixels.length; p++) {
+                int gray = 255 - (int) (f.values[p] * 255);
+
+                pixels[p] = 0xFF000000 | (gray<<16) | (gray<<8) | gray;
+            }
+
+            BufferedImage image = new BufferedImage(f.dimSizes[0], f.dimSizes[0], BufferedImage.TYPE_INT_ARGB);
+
+            image.setRGB(0, 0, f.dimSizes[0], f.dimSizes[0], pixels, 0, f.dimSizes[0]);
+
+            File outputfile = new File("Filter " + i.coordIterator.getCurrentCount() + ".png");
+
+            ImageIO.write(image, "png", outputfile);
+        }
+
     }
 }
