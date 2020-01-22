@@ -1,12 +1,15 @@
 package uk.ac.cam.mgm52.cnn;
 
 import java.util.List;
+import java.util.Random;
 import java.util.stream.IntStream;
 
 //Given a set of layers, a set of input data, and a set of expected output data, it
 public class Trainer {
 
     Network network;
+
+    Random rand = new Random();
 
     LossFunction lossFun;
 
@@ -67,6 +70,20 @@ public class Trainer {
         if(talkInterval>0) System.out.println(message);
     }
 
+    public void printExamples(int n){
+        for(int i = 0; i < n; i++){
+            int r = rand.nextInt(inputs.length);
+            Tensor output = network.forwardProp(inputs[r]);
+
+            System.out.println("Given input:");
+            System.out.println(inputs[r].toBoolString());
+
+            System.out.println("The network predicted " + ArrayUtils.findIndexOfMax(output.values));
+            System.out.println("The actual value was " + ArrayUtils.findIndexOfMax(labels[r].values));
+
+        }
+    }
+
     public double[] train(Tensor input, Tensor label){
         Tensor output = network.forwardProp(input);
         network.backProp(lossFun.calculateLossDerivative(label.values, output.values), learningRate);
@@ -76,5 +93,7 @@ public class Trainer {
 
         return output.values;
     }
+
+
 
 }

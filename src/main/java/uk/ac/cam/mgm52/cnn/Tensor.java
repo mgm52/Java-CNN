@@ -89,7 +89,7 @@ public class Tensor {
         //Iterate through each value. A TensorCoordIterator is not necessary here, as we operate in indices.
         for(int i = 0; i < values.length; i++){
             //Getting next value in tensor...
-            String valString = ((values[i] < 0) ? "." : "#");
+            String valString = ((values[i] < 0.4) ? (values[i] < 0 ? " " : "#") : "█");
 
             result += valString + " ";;
 
@@ -210,7 +210,6 @@ public class Tensor {
         return ArrayUtils.findIndexOfMax(values);
     }
 
-
     public double maxValue(){
         return ArrayUtils.findIndexOfMax(values);
     }
@@ -257,7 +256,6 @@ public class Tensor {
         }
         return flippedTensor;
     }
-
 
     /**Iterates through all possible regions (of a certain size) that can be made from this tensor.
      * Can be instantiated with or without strides.*/
@@ -317,7 +315,5 @@ public class Tensor {
             return getRegion(regionBottomCorner, regionTopCorner);
         }
     }
-
-
 
 }
