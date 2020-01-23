@@ -6,9 +6,9 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
         //Using the MNIST dataset, which has 60,000 labelled 28x28 greyscale images. This example is just reading the first 10000.
-        int[] labels = IdxReader.readLabels("resources/mnist/train-labels-idx1-ubyte", 100);
+        int[] labels = IdxReader.readLabels("resources/mnist/train-labels-idx1-ubyte", 10000);
         Tensor[] labelTensors = IdxReader.labelsToTensors(labels);
-        Tensor[] imageTensors = IdxReader.readGreyImages("resources/mnist/train-images-idx3-ubyte", 100);
+        Tensor[] imageTensors = IdxReader.readGreyImages("resources/mnist/train-images-idx3-ubyte", 10000);
 
         Network testNet = new Network(28, 28);
 
