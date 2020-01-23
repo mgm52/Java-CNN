@@ -51,7 +51,7 @@ public class Layer_FullyConnected implements Layer {
         for(int i = 0; i < outputGrad.values.length; i++){
             Tensor newGrads = recentInput.product(outputGrad.values[i]);
 
-            weightGrad = (weightGrad == null) ? newGrads : weightGrad.appendTensor(newGrads, weights.rank);
+            weightGrad = (weightGrad == null) ? newGrads : weightGrad.appendTensor(newGrads, weights.dimSizes.length);
         }
 
         //derivative of loss wrt inputs = weights * deriv wrt bias output

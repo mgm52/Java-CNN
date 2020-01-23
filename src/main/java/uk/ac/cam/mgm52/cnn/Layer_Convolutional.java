@@ -4,7 +4,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.stream.IntStream;
 
 public class Layer_Convolutional implements Layer {
 
@@ -43,13 +44,24 @@ public class Layer_Convolutional implements Layer {
     public static Tensor crossCorrelationMap(Tensor base, Tensor filter, int[] ccMapSize, int[] padding){
         double[] ccMapValues = new double[ArrayUtils.product(ccMapSize)];
 
-        for (Tensor.RegionsIterator i = base.new RegionsIterator(filter.dimSizes, padding); i.hasNext(); ) {
-            Tensor region = i.next();
-            ccMapValues[i.coordIterator.getCurrentCount()-1] = region.innerProduct(filter);
+
+        //Add all regions into a list. This is so that we can use parallel processing.
+        ArrayList<Tensor.ValuesIterator> regions = new ArrayList<>();
+        base.new RegionsIteratorIterator(filter.dimSizes, padding).forEachRemaining(regions::add);
+
+        if(ccMapValues.length != regions.size()){
+            System.out.println("hey");
         }
+
+        IntStream.range(0, ccMapValues.length).parallel().forEach( i ->
+                ccMapValues[i] = regions.get(i).innerProduct(filter)
+        );
 
         return new Tensor(ccMapSize, ccMapValues);
     }
+
+
+
 
     @Override
     public Tensor forwardProp(Tensor input) {
@@ -62,7 +74,7 @@ public class Layer_Convolutional implements Layer {
             Tensor newMap = crossCorrelationMap(input, i.next(), ccMapSize, new int[0]);
 
             //Append or assign new map to output
-            output = (output == null) ? newMap : output.appendTensor(newMap, filters.rank);
+            output = (output == null) ? newMap : output.appendTensor(newMap, filters.dimSizes.length);
         }
 
         return output;
@@ -77,7 +89,7 @@ public class Layer_Convolutional implements Layer {
 
         //We can think of outputGrad as a series of "gradient filters" which we apply to the recent input.
         //This is the size of each of those filters.
-        int[] outputGradSize = outputGrad.getFirstDimsCopy(outputGrad.rank - 1);
+        int[] outputGradSize = outputGrad.getFirstDimsCopy(outputGrad.dimSizes.length - 1);
 
         //Iterate through each output grad, appending result to filter grad tensor.
         //Simultaneously, iterate through our original filters, altering them via gradient descent
@@ -92,7 +104,7 @@ public class Layer_Convolutional implements Layer {
             //Calculating deriv wrt filters
             Tensor newMap = crossCorrelationMap(recentInput, outputLayer, filterDimSizes, new int[0]);
             //Append or assign new map to filter grad tensor
-            filterGrads = (filterGrads == null) ? newMap : filterGrads.appendTensor(newMap, outputGrad.rank);
+            filterGrads = (filterGrads == null) ? newMap : filterGrads.appendTensor(newMap, outputGrad.dimSizes.length);
 
             //Deriv wrt input = deriv wrt outputs * flipped filters
             //To return the correct sized tensor, this requires some padding - which happens to be (filter sizes - 1)

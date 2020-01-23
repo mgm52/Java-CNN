@@ -1,9 +1,9 @@
 package uk.ac.cam.mgm52.cnn;
 
-import java.lang.reflect.Array;
 import java.util.Iterator;
 
-public class CoordUtils {
+/**To assist in operating on coordinates*/
+class CoordUtils {
 
     private CoordUtils(){}
 
@@ -43,10 +43,10 @@ public class CoordUtils {
             for(int i = 0; i < startCoords.length; i++){
                 startCoords[i] = Math.min(corner1[i], corner2[i]);
                 currentCoords[i] = startCoords[i];
-                finalCoords[i] = Math.max(corner1[i], corner2[i]);
+                finalCoords[i] = Math.max(corner1[i], corner2[i]) - 1;
 
                 //The total number of integer coordinates within the region (not considering stride)
-                finalIndex *= (finalCoords[i] - startCoords[i]) + 1;
+                finalIndex *= (finalCoords[i] - startCoords[i]) + 2;
             }
             //At each iteration, we increment the coordinate before returning it. This means that our starting position has to be 1 stride less than the first coord.
             currentCoords[0] --;
@@ -61,8 +61,8 @@ public class CoordUtils {
         public int[] next() {
             //This works like a simple counter. It increments the leftmost non-maximal number, setting any maximal numbers back to zero.
             for(int i = 0; i < currentCoords.length; i++){
-                if(currentCoords[i] + 1 > finalCoords[i]){
-                    currentCount += (currentCoords[i] - finalCoords[i]);
+                if(currentCoords[i] > finalCoords[i]){
+                    currentCount += (currentCoords[i] - finalCoords[i] - 1);
                     currentCoords[i] = startCoords[i];
                 }
                 else{

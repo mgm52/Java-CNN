@@ -1,6 +1,5 @@
 package uk.ac.cam.mgm52.cnn;
 
-import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
@@ -8,14 +7,14 @@ import java.util.stream.DoubleStream;
 
 /**Stores an N-dimensional tensor. Facilitates operations including cross-correlation mapping and extracting subsets.*/
 public class Tensor {
+    //Values of all elements. Stored in Horner's scheme.
+    //I sacrificed immutability for performance; maintaining immutability would introduce too much overhead when copying over values.
+    public double[] values;
+
     //Length of each dimension
     public int[] dimSizes;
 
-    //Values of all elements. Stored in Horner's scheme.
-    public double[] values;
 
-    //Number of dimensions.
-    public final int rank;
 
     /**Creates new tensor with given dimensions. Default values are zero.
      * @param dimSizes the size (length) of each dimension within the tensor
@@ -23,7 +22,6 @@ public class Tensor {
     public Tensor(int... dimSizes){
         //Although it would better enforce immutability, copying values would introduce unnecessary overhead, so array is assigned as a reference.
         this.dimSizes = dimSizes;
-        rank = dimSizes.length;
 
         //The length of our 1-dimensional values array needs to be equivalent to the product of all dimensions
         this.values = new double[ArrayUtils.product(dimSizes)];
@@ -36,13 +34,11 @@ public class Tensor {
     public Tensor(int[] dimSizes, double[] values){
         //Although it would better enforce immutability, copying values would introduce unnecessary overhead, so arrays are assigned as references.
         this.dimSizes = dimSizes;
-        rank = dimSizes.length;
         this.values = values;
     }
 
     /**Returns a subset of the dimensions of the tensor, starting from dim 0
      * @param length The number of dimensions to return
-     * @return
      */
     public int[] getFirstDimsCopy(int length){
         return Arrays.copyOf(dimSizes, length);
@@ -69,7 +65,7 @@ public class Tensor {
 
             if(valString.contains("E")) shortString += valString.substring(valString.indexOf("E"));
 
-            result += shortString + " ";;
+            result += shortString + " ";
 
             //If statement here is to prevent new lines being added to end of result
             if (i < values.length-1 && dimSizes.length > 1) {
@@ -83,7 +79,8 @@ public class Tensor {
         return result;
     }
 
-    public String toBoolString(){
+    /**Used to print a crude image representing the values in the tensor.*/
+    public String toImageString(){
         String result = "";
 
         //Iterate through each value. A TensorCoordIterator is not necessary here, as we operate in indices.
@@ -91,7 +88,7 @@ public class Tensor {
             //Getting next value in tensor...
             String valString = ((values[i] < 0.4) ? (values[i] < 0 ? " " : "#") : "█");
 
-            result += valString + " ";;
+            result += valString + " ";
 
             //If statement here is to prevent new lines being added to end of result
             if (i < values.length-1 && dimSizes.length > 1) {
@@ -105,12 +102,12 @@ public class Tensor {
         return result;
     }
 
-    /**Return new tensor with same dimensions, but values at zero.*/
+    /**Return new Tensor with same dimensions, but values at zero.*/
     public Tensor zeroes(){
         return new Tensor(dimSizes);
     }
 
-    /**Return new tensor with same dimensions, but values randomized within range.
+    /**Return new Tensor with same dimensions, but values randomized within range.
      * @param min min value of each item
      * @param max max value of each item
      */
@@ -125,9 +122,9 @@ public class Tensor {
         return t;
     }
 
+    /**Return new Tensor with values determined by a standard normal distribution*/
     public Tensor randomsSND(){
         Tensor t = new Tensor(dimSizes);
-
         Random ran = new Random();
 
         //Set all values to random, normally distributed values with mean 0, stan dev 1
@@ -184,6 +181,7 @@ public class Tensor {
         return new Tensor(dimSizes, newVals);
     }
 
+    /**Equal Tensors are defined as having the same dimension sizes & values.*/
     public boolean equals(Tensor t){
         return(Arrays.equals(t.dimSizes, dimSizes) && Arrays.equals(t.values, values));
     }
@@ -240,8 +238,10 @@ public class Tensor {
         return new Tensor(newDimSizes, newValues);
     }
 
-    //Returns a tensor flipped diagonally.
-    //Coord at dimension d -> dimsize[d] - 1 - coord[d]
+    /**Flips a Tensor.
+     * Coord at dimension d becomes dimsize[d] - 1 - coord[d]
+     * @return diagonally flipped Tensor.
+     */
     public Tensor flip(){
         Tensor flippedTensor = new Tensor(dimSizes);
 
@@ -272,14 +272,18 @@ public class Tensor {
             int[] regionSizesCopy = regionSizes;
 
             //Ensure regions are the same size by appending dimensions of length 1
-            while(regionSizesCopy.length < dimSizes.length) regionSizesCopy = ArrayUtils.appendValue(regionSizesCopy, 1);
+            if(regionSizesCopy.length < dimSizes.length){
+                regionSizesCopy = Arrays.copyOf(regionSizes, dimSizes.length);
+                Arrays.fill(regionSizesCopy, regionSizes.length, regionSizesCopy.length, 1);
+            }
+
 
             //Subtracting 1 here so that we don't have to in later iterations
             this.regionSizes = ArrayUtils.addAll(regionSizesCopy, -1);
 
             //Bottom corner is at origin, then displace by padding
             bottomCorner = new int[dimSizes.length];
-            ArrayUtils.subtractAll(bottomCorner, padding);
+            bottomCorner = ArrayUtils.subtractAll(bottomCorner, padding);
 
             //Top corner is limited by size of region
             topCorner = ArrayUtils.subtractAll(dimSizes, regionSizesCopy);
@@ -308,11 +312,73 @@ public class Tensor {
             return coordIterator.hasNext();
         }
 
+        //Return Tensor representing all values in a region.
         @Override
         public Tensor next() {
             int[] regionBottomCorner = coordIterator.next();
             int[] regionTopCorner = ArrayUtils.addAll(regionBottomCorner, regionSizes);
+
             return getRegion(regionBottomCorner, regionTopCorner);
+        }
+
+
+    }
+
+    /**Iterates through all possible regions (of a certain size) that can be made from this tensor.
+     * While RegionsIterator returns Tensors, this iterator returns Iterators.
+     * Can be instantiated with or without strides.*/
+    class RegionsIteratorIterator implements Iterator<ValuesIterator>{
+
+        RegionsIterator iter;
+
+        RegionsIteratorIterator(int[] regionSizes, int[] padding) {
+            iter = new RegionsIterator(regionSizes, padding);
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iter.hasNext();
+        }
+
+        //Return iterator over values in tensor.
+        @Override
+        public ValuesIterator next() {
+            int[] regionBottomCorner = iter.coordIterator.next();
+            int[] regionTopCorner = ArrayUtils.addAll(regionBottomCorner, iter.regionSizes);
+
+            return new ValuesIterator(new CoordUtils.CoordIterator(regionBottomCorner, regionTopCorner));
+        }
+
+
+    }
+
+
+    /**Iterates through values in the tensor.
+     * Primarily used to improve performance on functions that demand large regions to be extracted.*/
+    class ValuesIterator implements Iterator<Double>{
+        private CoordUtils.CoordIterator iter;
+
+        public ValuesIterator(CoordUtils.CoordIterator iter){
+            this.iter = iter;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return iter.hasNext();
+        }
+
+        @Override
+        public Double next() {
+            return get(iter.next());
+        }
+
+        /**Multiply each element of t1 with a corresponding element of t2, then sum these values.*/
+        public double innerProduct(Tensor t){
+            double result = 0;
+            for(int i = 0; i < t.values.length; i++){
+                result += next() * t.values[i];
+            }
+            return result;
         }
     }
 

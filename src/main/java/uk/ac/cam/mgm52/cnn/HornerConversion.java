@@ -1,8 +1,6 @@
 package uk.ac.cam.mgm52.cnn;
 
-/**
- * Convert between a set of coordinates and an index identifying the element in Horner's scheme
- */
+/**Convert between coordinates and indices Horner's scheme*/
 public class HornerConversion {
 
     //Declaring constructor as private to make the class effectively static

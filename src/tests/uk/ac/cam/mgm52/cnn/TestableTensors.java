@@ -5,7 +5,7 @@ import java.util.stream.IntStream;
 
 public class TestableTensors {
 
-    private TestableTensors(){};
+    private TestableTensors(){}
 
     //Populate tensor with values equal to the index of each coordinate
     public static Tensor consecutiveValues(int... dimSizes){

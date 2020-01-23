@@ -1,11 +1,11 @@
 package uk.ac.cam.mgm52.cnn;
 
+/**Provides an interface to loss functions. Used in backpropagation*/
 public interface LossFunction{
-    public Tensor calculateLoss(double[] expectedOutput, double[] actualOutput);
-    public Tensor calculateLossDerivative(double[] expectedOutput, double[] actualOutput);
+     Tensor calculateLoss(double[] expectedOutput, double[] actualOutput);
+     Tensor calculateLossDerivative(double[] expectedOutput, double[] actualOutput);
 
-
-    public static LossFunction crossEntropy = new LossFunction() {
+     LossFunction crossEntropy = new LossFunction() {
         @Override
         public Tensor calculateLoss(double[] expectedOutput, double[] actualOutput) {
             double[] lossValues = new double[expectedOutput.length];

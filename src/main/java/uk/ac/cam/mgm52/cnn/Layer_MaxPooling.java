@@ -1,7 +1,5 @@
 package uk.ac.cam.mgm52.cnn;
 
-import java.util.ArrayList;
-
 public class Layer_MaxPooling implements Layer{
 
     int[] strides;
@@ -11,7 +9,7 @@ public class Layer_MaxPooling implements Layer{
 
     Tensor inputTensor;
 
-    //indices of each max value, used in backprop later
+    //Indices of each max value. Used in backprop later.
     int[] maxIndices;
 
     public Layer_MaxPooling(int[] strides, int[] sizes, int[] expectedInputDims){

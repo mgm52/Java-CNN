@@ -2,6 +2,7 @@ package uk.ac.cam.mgm52.cnn;
 
 import java.util.Arrays;
 
+/**An array of layers, connected to each other.*/
 public class Network implements Layer {
 
     Layer[] layers = {};
@@ -62,8 +63,8 @@ public class Network implements Layer {
     public Tensor forwardProp(Tensor input) {
         Tensor output = input;
 
-        for(int i=0; i < layers.length; i++){
-            output = layers[i].forwardProp(output);
+        for(Layer l : layers){
+            output = l.forwardProp(output);
         }
 
         return output;

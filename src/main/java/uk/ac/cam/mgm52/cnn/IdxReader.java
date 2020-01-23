@@ -1,21 +1,17 @@
 package uk.ac.cam.mgm52.cnn;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
+/**Reads IDX files*/
 public class IdxReader {
 
     private IdxReader(){}
 
+    //Adapted from Radek Mackowiak's method https://stackoverflow.com/a/20383900
     public static Tensor[] readGreyImages(String path, int limit) throws IOException {
-        // TODO Auto-generated method stub
-        FileInputStream inImage = null;
+        FileInputStream inImage;
 
         inImage = new FileInputStream(path);
 
@@ -54,7 +50,6 @@ public class IdxReader {
         int[] labels = new int[limit];
 
         for(int i = 0; i < limit; i++) {
-           //if(i % 100 == 0) {System.out.println("Number of labels extracted: " + i);}
            labels[i] = inLabel.read();
        }
 
@@ -66,8 +61,8 @@ public class IdxReader {
         ArrayList<Integer> uniqueLabels = new ArrayList<>();
         Tensor[] labelsTensors = new Tensor[labels.length];
 
-        for(int i = 0; i < labels.length; i++){
-            if(!uniqueLabels.contains(labels[i])) uniqueLabels.add(labels[i]);
+        for(int l : labels){
+            if(!uniqueLabels.contains(l)) uniqueLabels.add(l);
         }
 
         uniqueLabels.sort(Integer::compareTo);
